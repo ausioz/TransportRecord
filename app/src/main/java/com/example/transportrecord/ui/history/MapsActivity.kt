@@ -8,8 +8,6 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.viewModels
 import com.example.transportrecord.R
-import com.example.transportrecord.data.entity.TransportHistory
-
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
@@ -36,8 +34,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private val viewModel: MainViewModel by viewModels { ViewModelFactory(application) }
 
-    private val transportHistoryList = mutableListOf<TransportHistory>()
-
     private val directionRequest = mutableListOf<DirectionsApiRequest>()
     private val paths: MutableList<LatLng> = ArrayList()
     private val boundsBuilder = LatLngBounds.Builder()
@@ -51,7 +47,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         val mapFragment = supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
-
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
@@ -60,7 +55,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
         val geoApiContext =
             GeoApiContext.Builder().apiKey("AIzaSyBIZFTMnT_20Q9WZLfdJaKlZbyKbFEqgVU").build()
-
 
         val extraRefArmada = intent.getIntExtra(EXTRA_REF_ARMADA, -1)
         val extraTgl = intent.getStringExtra(EXTRA_TGL_TRANSPORT)
@@ -80,69 +74,21 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         if (extraRefArmada != -1 && extraTgl != null) {
             viewModel.getTransportHistoryByArmadaAndDate(extraRefArmada, extraTgl)
                 .observe(this) { history ->
-                    transportHistoryList.addAll(history)
-                    Log.d(TAG, "livedata: $transportHistoryList")
-
-
-                    for (i in transportHistoryList.indices) {
-                        if (i + 1 != transportHistoryList.size) {
+                    Log.d(TAG, "livedata: $history")
+                    for (i in history.indices) {
+                        if (i + 1 != history.size) {
                             directionRequest.add(
                                 DirectionsApi.getDirections(
                                     geoApiContext,
-                                    "${transportHistoryList[i].latitude},${transportHistoryList[i].longitude}",
-                                    "${transportHistoryList[i + 1].latitude},${transportHistoryList[i + 1].longitude}"
+                                    "${history[i].latitude},${history[i].longitude}",
+                                    "${history[i + 1].latitude},${history[i + 1].longitude}"
                                 )
                             )
                         }
                     }
 
                     directionRequest.forEach { request ->
-                        try {
-                            val res = request.await()
-                            if (res.routes.isNullOrEmpty().not()) {
-                                val route = res.routes[0]
-                                if (route.legs.isNullOrEmpty().not()) {
-                                    for (leg in route.legs) {
-                                        if (leg.steps.isNullOrEmpty().not()) {
-                                            for (step in leg.steps) {
-                                                if (step.steps.isNullOrEmpty().not()) {
-                                                    for (step1 in step.steps) {
-                                                        step1.polyline?.let { points1 ->
-                                                            val coordinates = points1.decodePath()
-                                                            for (coordinate in coordinates) {
-                                                                paths.add(
-                                                                    LatLng(
-                                                                        coordinate.lat,
-                                                                        coordinate.lng
-                                                                    )
-                                                                )
-                                                            }
-                                                        }
-
-                                                    }
-                                                } else {
-                                                    step.polyline?.let { points ->
-                                                        val coordinates = points.decodePath()
-                                                        for (coordinate in coordinates) {
-                                                            paths.add(
-                                                                LatLng(
-                                                                    coordinate.lat, coordinate.lng
-                                                                )
-                                                            )
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                        } catch (ex: Exception) {
-                            Log.e(
-                                "DirectionsApi", "DirectionsApi exception localizedMessage: $ex"
-                            )
-                        }
+                        requestDirection(request)
                     }
 
                     if (paths.isNotEmpty()) {
@@ -150,8 +96,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                         mMap.addPolyline(opts)
                     }
 
-                    Log.d(TAG, "transportHistoryList: $transportHistoryList")
-                    transportHistoryList.forEach { historyMarker ->
+                    history.forEach { historyMarker ->
                         mMap.addMarker(
                             MarkerOptions().position(
                                 LatLng(
@@ -178,6 +123,54 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                     )
                     mMap.uiSettings.isZoomControlsEnabled = true
                 }
+        }
+    }
+
+    private fun requestDirection(request: DirectionsApiRequest) {
+        try {
+            val res = request.await()
+            if (res.routes.isNullOrEmpty().not()) {
+                val route = res.routes[0]
+                if (route.legs.isNullOrEmpty().not()) {
+                    for (leg in route.legs) {
+                        if (leg.steps.isNullOrEmpty().not()) {
+                            for (step in leg.steps) {
+                                if (step.steps.isNullOrEmpty().not()) {
+                                    for (step1 in step.steps) {
+                                        step1.polyline?.let { points1 ->
+                                            val coordinates = points1.decodePath()
+                                            for (coordinate in coordinates) {
+                                                paths.add(
+                                                    LatLng(
+                                                        coordinate.lat, coordinate.lng
+                                                    )
+                                                )
+                                            }
+                                        }
+
+                                    }
+                                } else {
+                                    step.polyline?.let { points ->
+                                        val coordinates = points.decodePath()
+                                        for (coordinate in coordinates) {
+                                            paths.add(
+                                                LatLng(
+                                                    coordinate.lat, coordinate.lng
+                                                )
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+        } catch (ex: Exception) {
+            Log.e(
+                "DirectionsApi", "DirectionsApi exception localizedMessage: $ex"
+            )
         }
     }
 

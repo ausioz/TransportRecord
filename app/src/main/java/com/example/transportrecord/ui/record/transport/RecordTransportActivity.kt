@@ -98,9 +98,8 @@ class RecordTransportActivity : AppCompatActivity() {
         }
 
         binding.etTanggal.setOnClickListener {
-            val picker = MaterialDatePicker.Builder.datePicker()
-                .setTitleText("Pilih Tanggal")
-                .build()
+            val picker =
+                MaterialDatePicker.Builder.datePicker().setTitleText("Pilih Tanggal").build()
             picker.show(this.supportFragmentManager, "TAG")
             picker.addOnPositiveButtonClickListener {
                 binding.etTanggal.text = convertTimeToDate(it)
@@ -109,21 +108,17 @@ class RecordTransportActivity : AppCompatActivity() {
         }
 
         binding.etJam.setOnClickListener {
-            val picker = MaterialTimePicker.Builder()
-                .setTitleText("Pilih Jam")
-                .setTimeFormat(TimeFormat.CLOCK_24H)
-                .setHour(LocalDateTime.now().hour)
+            val picker = MaterialTimePicker.Builder().setTitleText("Pilih Jam")
+                .setTimeFormat(TimeFormat.CLOCK_24H).setHour(LocalDateTime.now().hour)
                 .setMinute(LocalDateTime.now().minute)
-                .setInputMode(MaterialTimePicker.INPUT_MODE_CLOCK)
-                .build()
+                .setInputMode(MaterialTimePicker.INPUT_MODE_CLOCK).build()
             picker.show(this.supportFragmentManager, "TAG")
             picker.addOnPositiveButtonClickListener {
-                val sb = StringBuilder()
-                binding.etJam.text = sb.append(
-                    String.format(Locale.getDefault(), "%02d", picker.hour),
-                    ":",
-                    String.format(Locale.getDefault(), "%02d", picker.minute)
-                )
+                binding.etJam.text = buildString {
+                    append(String.format(Locale.getDefault(), "%02d", picker.hour))
+                    append(":")
+                    append(String.format(Locale.getDefault(), "%02d", picker.minute))
+                }
             }
         }
 
